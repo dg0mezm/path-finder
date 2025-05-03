@@ -22,7 +22,7 @@ Path Traversal vulnerabilities allow attackers to access files and directories t
 - Depth control for payload length
 - Customizable timeout settings
 
-## Usage
+## Example of Usage
 
 Example usage for testing the path `/image` with the `filename` parameter, while filtering the response size to exclude `14` and `30`:
 ```
