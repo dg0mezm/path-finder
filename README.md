@@ -39,6 +39,8 @@ python path-finder.py --target https://0a5f000804d44f0883c1c81f00fb00fb.web-secu
 | `--fs` | Filter responses by size. Provide one or more sizes separated by commas (e.g., 50,85) |
 | `--threads` | Specify the number of threads to use for concurrent requests (default: 20) |
 | `--timeout` | Set the timeout duration (in seconds) for each request (default: 5) |
+| `--lhost` | Specify our URL or IP address. |
+| `--lport-http` | Specify the port of our web server. |
 
 ## Disclaimer
 This tool is intended for educational purposes and authorized testing only. Use it responsibly and only on systems you have permission to test. The author assumes no liability for any misuse.

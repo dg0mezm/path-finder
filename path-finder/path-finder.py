@@ -13,8 +13,8 @@ def get_args():
     args_group.add_argument("--fs", type=lambda s: list(map(int, s.split(','))), help="Filter responses by size. Provide one or more sizes separated by commas (e.g., 50,85).")
     args_group.add_argument("--threads", type=int, default=20, help="Specify the number of threads to use for concurrent requests.")
     args_group.add_argument("--timeout", type=int, default=5, help="Set the timeout duration (in seconds) for each request.")
-    args_group.add_argument("--lhost", type=str, help="")
-    args_group.add_argument("--lport-http", type=str, help="")
+    args_group.add_argument("--lhost", type=str, help="Specify our URL or IP address.")
+    args_group.add_argument("--lport-http", type=str, help="Specify the port of our web server.")
 
     return parser.parse_args()
 
